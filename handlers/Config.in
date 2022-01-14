@@ -66,6 +66,7 @@ config DELTA
 	depends on HAVE_ZSTD
 	depends on HAVE_ZCK
 	select CHANNEL_CURL
+	select ZSTD
 	default n
 	help
 	  Handler to enable delta images. The handler computes the differences
