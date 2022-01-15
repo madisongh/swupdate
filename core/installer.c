@@ -15,6 +15,7 @@
 #include <getopt.h>
 #include <errno.h>
 #include <ctype.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
@@ -57,7 +58,7 @@ swupdate_file_t check_if_required(struct imglist *list, struct filehdr *pfdh,
 		if (strcmp(pfdh->filename, img->fname) == 0) {
 			skip = COPY_FILE;
 			img->provided = 1;
-			img->size = (unsigned int)pfdh->size;
+			img->size = pfdh->size;
 
 			if (snprintf(img->extract_file,
 				     sizeof(img->extract_file), "%s%s",
@@ -140,13 +141,20 @@ static int extract_scripts(struct imglist *head)
 			return -ENOENT;
 		}
 
-		ret = copyfile(fdin, &fdout, script->size, &offset, 0, 0,
-				script->compressed,
-				&checksum,
-				script->sha256,
-				script->is_encrypted,
-				script->ivt_ascii,
-				NULL);
+		if (script->size > ULONG_MAX) {
+			ERROR("Script %s too large (%lld)", script->fname, script->size);
+			ret = -EFBIG;
+		} else {
+			ret = copyfile(fdin, &fdout,
+				       (unsigned long) script->size,
+				       &offset, 0, 0,
+				       script->compressed,
+				       &checksum,
+				       script->sha256,
+				       script->is_encrypted,
+				       script->ivt_ascii,
+				       NULL);
+		}
 		close(fdin);
 		close(fdout);
 
