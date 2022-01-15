@@ -36,6 +36,7 @@
 #include <util.h>
 #include <pctl.h>
 #include <pthread.h>
+#include <inttypes.h>
 #include <fs_interface.h>
 #include "delta_handler.h"
 #include "multipart_parser.h"
@@ -94,7 +95,7 @@ struct hnd_priv {
 	zck_log_type zckloglevel;	/* if found, set log level for ZCK to this */
 	bool detectsrcsize;		/* if set, try to compute size of filesystem in srcdev */
 	size_t srcsize;			/* Size of source */
-	unsigned long max_ranges;	/* Max allowed ranges (configured via sw-description) */
+	int max_ranges;			/* Max allowed ranges (configured via sw-description) */
 	/* Data to be transferred to chain handler */
 	struct img_type img;
 	char fifo[80];
@@ -319,7 +320,7 @@ static int delta_retrieve_attributes(struct img_type *img, struct hnd_priv *priv
 	}
 	errno = 0;
 	if (dict_get_value(&img->properties, "max-ranges"))
-		priv->max_ranges = strtoul(dict_get_value(&img->properties, "max-ranges"), NULL, 10);
+		priv->max_ranges = (int) strtoul(dict_get_value(&img->properties, "max-ranges"), NULL, 10);
 	if (errno || priv->max_ranges == 0)
 		priv->max_ranges = DEFAULT_MAX_RANGES;
 
@@ -475,7 +476,7 @@ static bool create_zckindex(zckCtx *zck, int fd, size_t maxbytes)
 	const size_t bufsize = 16384;
 	char *buf = malloc(bufsize);
 	ssize_t n;
-	int ret;
+	ssize_t ret;
 
 	if (!buf) {
 		ERROR("OOM creating temporary buffer");
@@ -629,7 +630,7 @@ static bool read_and_validate_package(struct hnd_priv *priv)
 	}
 
 	if (answer->type == RANGE_DATA) {
-		crc = crc32(0, (unsigned char *)answer->data, answer->len);
+		crc = (uint32_t) crc32(0, (unsigned char *)answer->data, (uInt) answer->len);
 		if (crc != answer->crc) {
 			ERROR("Corrupted package received !");
 			exit(1);
@@ -1096,7 +1097,7 @@ static int install_delta(struct img_type *img,
 	if (ret) {
 		ERROR("return code from pthread_join() is %d", ret);
 	}
-	ret = (unsigned long)status;
+	ret = (int)(uintptr_t)status;
 	TRACE("Chained handler returned %d", ret);
 
 cleanup:
