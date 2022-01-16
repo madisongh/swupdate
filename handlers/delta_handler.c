@@ -939,12 +939,6 @@ static int install_delta(struct img_type *img,
 	/*
 	 * Open files
 	 */
-	dst_fd = open("/dev/null", O_TRUNC | O_WRONLY | O_CREAT, 0666);
-	if (dst_fd < 0) {
-		ERROR("/dev/null not present or cannot be opened, aborting...");
-		goto cleanup;
-	}
-
 	if (priv->detectsrcsize) {
 #if defined(CONFIG_DISKFORMAT)
 		char *filesystem = diskformat_fs_detect(priv->srcdev);
@@ -1103,8 +1097,10 @@ static int install_delta(struct img_type *img,
 cleanup:
 	if (zckSrc) zck_free(&zckSrc);
 	if (zckDst) zck_free(&zckDst);
-	close(dst_fd);
-	close(in_fd);
+	if (dst_fd >= 0)
+		close(dst_fd);
+	if (in_fd >= 0)
+		close(in_fd);
 	if (FIFO) {
 		unlink(FIFO);
 		free(FIFO);
