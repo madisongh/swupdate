@@ -90,7 +90,7 @@ static rs_result base_file_read_cb(void *fp, rs_long_t pos, size_t *len, void **
 	return RS_DONE;
 }
 
-static rs_result fill_inbuffer(struct rdiff_t *rdiff_state, const void *buf, unsigned int *len)
+static rs_result fill_inbuffer(struct rdiff_t *rdiff_state, const void *buf, size_t *len)
 {
 	rs_buffers_t *buffers = &rdiff_state->buffers;
 
@@ -109,13 +109,13 @@ static rs_result fill_inbuffer(struct rdiff_t *rdiff_state, const void *buf, uns
 		TEST_OR_FAIL(*len <= RDIFF_BUFFER_SIZE, RS_IO_ERROR);
 		buffers->next_in = rdiff_state->inbuf;
 		buffers->avail_in = *len;
-		TRACE("Writing %d bytes to rdiff input buffer.", *len);
+		TRACE("Writing %zu bytes to rdiff input buffer.", *len);
 		(void)memcpy(rdiff_state->inbuf, buf, *len);
 		*len = 0;
 	} else {
 		/* There's more input, try to append it to input buffer. */
 		char *target = buffers->next_in + buffers->avail_in;
-		unsigned int buflen = rdiff_state->inbuf + RDIFF_BUFFER_SIZE - target;
+		size_t buflen = rdiff_state->inbuf + RDIFF_BUFFER_SIZE - target;
 		buflen = buflen > *len ? *len : buflen;
 		TEST_OR_FAIL(target + buflen <= rdiff_state->inbuf + RDIFF_BUFFER_SIZE, RS_IO_ERROR);
 
@@ -123,7 +123,7 @@ static rs_result fill_inbuffer(struct rdiff_t *rdiff_state, const void *buf, uns
 			TRACE("Not consuming rdiff chunk input, buffer already filled.");
 			return RS_BLOCKED;
 		}
-		TRACE("Appending %d bytes to rdiff input buffer.", buflen);
+		TRACE("Appending %zu bytes to rdiff input buffer.", buflen);
 		buffers->avail_in += buflen;
 		(void)memcpy(target, buf, buflen);
 		*len -= buflen;
@@ -135,7 +135,7 @@ static rs_result drain_outbuffer(struct rdiff_t *rdiff_state)
 {
 	rs_buffers_t *buffers = &rdiff_state->buffers;
 
-	int len = buffers->next_out - rdiff_state->outbuf;
+	ssize_t len = buffers->next_out - rdiff_state->outbuf;
 	TEST_OR_FAIL(len <= RDIFF_BUFFER_SIZE, RS_IO_ERROR);
 	TEST_OR_FAIL(buffers->next_out >= rdiff_state->outbuf, RS_IO_ERROR);
 	TEST_OR_FAIL(buffers->next_out <= rdiff_state->outbuf + RDIFF_BUFFER_SIZE, RS_IO_ERROR);
@@ -150,7 +150,7 @@ static rs_result drain_outbuffer(struct rdiff_t *rdiff_state)
 	}
 #endif
 	if (len > 0) {
-		TRACE("Draining %d bytes from rdiff output buffer", len);
+		TRACE("Draining %zd bytes from rdiff output buffer", len);
 		buffers->next_out = rdiff_state->outbuf;
 		buffers->avail_out = RDIFF_BUFFER_SIZE;
 		int dest_file_fd = fileno(rdiff_state->dest_file);
@@ -181,7 +181,7 @@ static int apply_rdiff_chunk_cb(void *out, const void *buf, size_t len)
 {
 	struct rdiff_t *rdiff_state = (struct rdiff_t *)out;
 	rs_buffers_t *buffers = &rdiff_state->buffers;
-	unsigned int inbytesleft = len;
+	size_t inbytesleft = len;
 	rs_result result = RS_RUNNING;
 	rs_result drain_run_result = RS_RUNNING;
 
