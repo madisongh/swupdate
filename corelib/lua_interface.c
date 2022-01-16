@@ -262,46 +262,46 @@ static void lua_string_to_img(struct img_type *img, const char *key,
 		}
 	}
 	if (!strcmp(key, "name")) {
-		strncpy(img->id.name, value,
+		strlcpy(img->id.name, value,
 			sizeof(img->id.name));
 	}
 	if (!strcmp(key, "version")) {
-		strncpy(img->id.version, value,
+		strlcpy(img->id.version, value,
 			sizeof(img->id.version));
 	}
 	if (!strcmp(key, "filename")) {
-		strncpy(img->fname, value,
+		strlcpy(img->fname, value,
 			sizeof(img->fname));
 	}
 	if (!strcmp(key, "volume"))
-		strncpy(img->volname, value,
+		strlcpy(img->volname, value,
 			sizeof(img->volname));
 	if (!strcmp(key, "type"))
-		strncpy(img->type, value,
+		strlcpy(img->type, value,
 			sizeof(img->type));
 	if (!strcmp(key, "device"))
-		strncpy(img->device, value,
+		strlcpy(img->device, value,
 			sizeof(img->device));
 	if (!strcmp(key, "mtdname"))
-		strncpy(img->mtdname, value,
+		strlcpy(img->mtdname, value,
 			sizeof(img->mtdname));
 	if (!strcmp(key, "path"))
-		strncpy(img->path, value,
+		strlcpy(img->path, value,
 			sizeof(img->path));
 	if (!strcmp(key, "data"))
-		strncpy(img->type_data, value,
+		strlcpy(img->type_data, value,
 			sizeof(img->type_data));
 	if (!strcmp(key, "filesystem"))
-		strncpy(img->filesystem, value,
+		strlcpy(img->filesystem, value,
 			sizeof(img->filesystem));
 	if (!strcmp(key, "sha256"))
 		ascii_to_hash(img->sha256, value);
 	if (!strcmp(key, "ivt"))
-		strncpy(img->ivt_ascii, value,
+		strlcpy(img->ivt_ascii, value,
 			sizeof(img->ivt_ascii));
 
 	if (!strncmp(key, offset, sizeof(offset))) {
-		strncpy(seek_str, value,
+		strlcpy(seek_str, value,
 			sizeof(seek_str));
 		/* convert the offset handling multiplicative suffixes */
 		img->seek = ustrtoull(seek_str, 0);
