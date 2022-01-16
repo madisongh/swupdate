@@ -856,14 +856,14 @@ static int diskpart(struct img_type *img,
 						part->start = ustrtoull(equal, 10);
 						break;
 					case PART_TYPE:
-						strncpy(part->type, equal, sizeof(part->type));
+						strlcpy(part->type, equal, sizeof(part->type));
 						break;
 					case PART_NAME:
-						strncpy(part->name, equal, sizeof(part->name));
+						strlcpy(part->name, equal, sizeof(part->name));
 						break;
 					case PART_FSTYPE:
 #ifdef CONFIG_DISKPART_FORMAT
-						strncpy(part->fstype, equal, sizeof(part->fstype));
+						strlcpy(part->fstype, equal, sizeof(part->fstype));
 						break;
 #else
 						ERROR("Partitions have fstype entries but diskpart format support is missing !");
@@ -871,11 +871,11 @@ static int diskpart(struct img_type *img,
 						goto handler_exit;
 #endif
 					case PART_DOSTYPE:
-						strncpy(part->dostype, equal, sizeof(part->dostype));
+						strlcpy(part->dostype, equal, sizeof(part->dostype));
 						hybrid++;
 						break;
 					case PART_UUID:
-						strncpy(part->partuuid, equal, sizeof(part->partuuid));
+						strlcpy(part->partuuid, equal, sizeof(part->partuuid));
 						break;
 					}
 				}
