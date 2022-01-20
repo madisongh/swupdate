@@ -8,3 +8,4 @@
 #pragma once
 
 extern int start_delta_downloader(const char *fname, int argc, char *argv[]);
+void delta_download_print_help(void);

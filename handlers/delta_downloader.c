@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <getopt.h>
 #include <errno.h>
 #include <string.h>
 #include <util.h>
@@ -31,6 +32,7 @@
 #include <zlib.h>
 #include <channel.h>
 #include <channel_curl.h>
+#include "parselib.h"
 #include "delta_handler.h"
 #include "delta_process.h"
 
@@ -43,7 +45,54 @@ typedef struct {
 	range_answer_t *answer;
 } dwl_data_t;
 
+static char *delta_downloader_base_url;
+static struct option long_options[] = {
+    {"url", required_argument, NULL, 'u'},
+};
+
 extern channel_op_res_t channel_curl_init(void);
+
+static int delta_download_settings(void *elem, void  __attribute__ ((__unused__)) *data)
+{
+	channel_data_t *opt = (channel_data_t *)data;
+	char tmp[SWUPDATE_GENERAL_STRING_SIZE];
+	size_t len;
+
+	GET_FIELD_STRING_RESET(LIBCFG_PARSER, elem, "url", tmp);
+	len = strlen(tmp);
+	if (len) {
+		if (tmp[len-1] != '/' && len < sizeof(tmp)-1)
+			tmp[len++] = '/';
+		SETSTRING(delta_downloader_base_url, tmp);
+	}
+	GET_FIELD_STRING_RESET(LIBCFG_PARSER, elem, "cafile", tmp);
+	if (strlen(tmp))
+		SETSTRING(opt->cafile, tmp);
+	GET_FIELD_STRING_RESET(LIBCFG_PARSER, elem, "sslkey", tmp);
+	if (strlen(tmp))
+		SETSTRING(opt->sslkey, tmp);
+	GET_FIELD_STRING_RESET(LIBCFG_PARSER, elem, "ciphers", tmp);
+	if (strlen(tmp))
+		SETSTRING(opt->ciphers, tmp);
+	GET_FIELD_STRING_RESET(LIBCFG_PARSER, elem, "sslcert", tmp);
+	if (strlen(tmp))
+		SETSTRING(opt->sslcert, tmp);
+	GET_FIELD_STRING_RESET(LIBCFG_PARSER, elem, "proxy", tmp);
+	if (strlen(tmp))
+		SETSTRING(opt->proxy, tmp);
+	GET_FIELD_STRING_RESET(LIBCFG_PARSER, elem, "interface", tmp);
+	if (strlen(tmp))
+		SETSTRING(opt->iface, tmp);
+	return 0;
+}
+
+void delta_download_print_help(void)
+{
+	fprintf(
+	    stdout,
+	    "\tdelta-download arguments:\n"
+	    "\t  -u, --url <url>        base URL prepended to relative paths in sw-description files\n");
+}
 
 static channel_data_t channel_data_defaults = {
 					.debug = false,
@@ -144,6 +193,31 @@ int start_delta_downloader(const char __attribute__ ((__unused__)) *fname,
 	range_answer_t *answer;
 	struct dict httpheaders;
 	dwl_data_t priv;
+	int choice = 0;
+
+	if (fname) {
+		swupdate_cfg_handle handle;
+		swupdate_cfg_init(&handle);
+		if (swupdate_cfg_read_file(&handle, fname) == 0)
+			read_module_settings(&handle, "delta", delta_download_settings,
+					     &channel_data_defaults);
+		swupdate_cfg_destroy(&handle);
+	}
+	if (loglevel >= DEBUGLEVEL)
+		channel_data_defaults.debug = true;
+
+	optind = 1;
+	opterr = 0;
+	while ((choice = getopt_long(argc, argv, "u:", long_options, NULL)) != -1) {
+		switch (choice) {
+		case 'u':
+			SETSTRING(delta_downloader_base_url, optarg);
+			break;
+		case '?':
+		default:
+			break;
+		}
+	}
 
 	TRACE("Starting Internal process for downloading chunks");
 	if (channel_curl_init() != CHANNEL_OK) {
@@ -164,6 +238,7 @@ int start_delta_downloader(const char __attribute__ ((__unused__)) *fname,
 
 	channel_data_t channel_data = channel_data_defaults;
 	channel_t *channel = channel_new();
+	char *url;
 	if (!channel) {
 		ERROR("Cannot get channel for communication");
 		exit (EXIT_FAILURE);
@@ -188,7 +263,20 @@ int start_delta_downloader(const char __attribute__ ((__unused__)) *fname,
 		priv.writefd = sw_sockfd;
 		priv.id = req->id;
 		priv.answer = answer;
-		channel_data.url = req->data;
+		url = NULL;
+		if (delta_downloader_base_url) {
+			char *cp = strchr(req->data, ':');
+			if (cp == NULL || *(cp+1) != '/' || *(cp+2) != '/') {
+				url = malloc(req->urllen + strlen(delta_downloader_base_url) + 1);
+				if (url == NULL) {
+					ERROR("Cannot allocate memory for download URL");
+					exit(EXIT_FAILURE);
+				}
+				strcpy(url, delta_downloader_base_url);
+				strcat(url, req->data);
+			}
+		}
+		channel_data.url = (url ? url : req->data);
 		channel_data.noipc = true;
 		channel_data.method = CHANNEL_GET;
 		channel_data.content_type = "*";
@@ -212,6 +300,9 @@ int start_delta_downloader(const char __attribute__ ((__unused__)) *fname,
 		}
 
 		(void)channel->close(channel);
+		if (url) {
+			free(url);
+		}
 	}
 
 	exit (EXIT_SUCCESS);

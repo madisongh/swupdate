@@ -75,6 +75,9 @@ static struct option long_options[] = {
 	{"blacklist", required_argument, NULL, 'b'},
 #endif
 	{"check", no_argument, NULL, 'c'},
+#ifdef CONFIG_DELTA
+	{"delta-download", required_argument, NULL, 'D'},
+#endif
 #ifdef CONFIG_DOWNLOAD
 	{"download", required_argument, NULL, 'd'},
 #endif
@@ -171,6 +174,11 @@ static void usage(char *programname)
 	fprintf(stdout,
 		" -d, --download [OPTIONS]       : Parameters to be passed to the downloader\n");
 	download_print_help();
+#endif
+#ifdef CONFIG_DELTA
+	fprintf(stdout,
+		" -D, --delta-download [OPTIONS] : Parameters to be passed to the delta downloader\n");
+	delta_download_print_help();
 #endif
 #ifdef CONFIG_SURICATTA
 	fprintf(stdout,
@@ -423,6 +431,12 @@ int main(int argc, char **argv)
 	char **av = NULL;
 	int ac = 0;
 #endif
+#ifdef CONFIG_DELTA
+	int opt_D = 0;
+	char *deltaoptions;
+	char **deltaav = NULL;
+	int deltaac = 0;
+#endif
 #ifdef CONFIG_DOWNLOAD
 	int opt_d = 0;
 	char *dwloptions;
@@ -655,6 +669,18 @@ int main(int argc, char **argv)
 			free(dwloptions);
 			break;
 #endif
+#ifdef CONFIG_DELTA
+		case 'D':
+			if (asprintf(&deltaoptions, "%s %s", argv[0], optarg) ==
+			    ENOMEM_ASPRINTF) {
+				ERROR("Cannot allocate memory for delta-download options.");
+				exit(EXIT_FAILURE);
+			}
+			deltaav = splitargs(deltaoptions, &deltaac);
+			opt_D = 1;
+			free(deltaoptions);
+			break;
+#endif
 		case 'H':
 			if (opt_to_hwrev(optarg, &swcfg.hw) < 0)
 				exit(EXIT_FAILURE);
@@ -858,9 +884,9 @@ int main(int argc, char **argv)
 	{
 		uid_t uid;
 		gid_t gid;
-		read_settings_user_id(&handle, "download", &uid, &gid);
+		read_settings_user_id(&handle, "delta", &uid, &gid);
 		start_subprocess(SOURCE_CHUNKS_DOWNLOADER, "chunks_downloader", uid, gid,
-				cfgfname, 0, NULL,
+				cfgfname, deltaac, deltaav,
 				start_delta_downloader);
 	}
 #endif
