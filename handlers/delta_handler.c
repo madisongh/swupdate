@@ -444,6 +444,9 @@ static void zck_log_toswupdate(const char *function, zck_log_type lt,
 	char buf[NOTIFY_BUF_SIZE];
 	int pos;
 
+	if (loglevel < l)
+		return;
+
 	pos = snprintf(buf, NOTIFY_BUF_SIZE - 1, "(%s) ", function);
 	vsnprintf(buf + pos, NOTIFY_BUF_SIZE - 1 - pos, format, args);
 
@@ -461,7 +464,7 @@ static void zck_log_toswupdate(const char *function, zck_log_type lt,
 		TRACE("%s", buf);
 		return;
 	case DEBUGLEVEL:
-		TRACE("%s", buf);
+		DEBUG("%s", buf);
 		return;
 	default:
 		return;
